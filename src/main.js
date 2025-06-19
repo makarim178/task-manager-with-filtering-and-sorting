@@ -1,53 +1,48 @@
-export let tasks = []
-
-const PRIORITY_VALUE = {
-  'low': 1,
+const PRIORITY_ORDER_VALUE = {
+  'high': 3,
   'medium': 2,
-  'high': 3
+  'low': 1
 }
 
-function clearInput() {
-  const taskInput = document.getElementById('task-input')
-  taskInput.value = ''
-}
+export let tasks = []
 
 export function addTask (task, priority) {
   // Add a new task and render the updated list
   tasks.push({
-      id: Date.now(),
-      task,
-      priority,
-      createdAt: Date.now()
-    })
+    id: Date.now(),
+    task,
+    priority,
+    createdAt: Date.now()
+  })
+  renderTasks()
 }
-
-// function removeDeleteBtnEvents() {
-//   const deleteBtns = document.querySelectorAll('.delete-btn')
-  
-// }
 
 export function deleteTask (taskId) {
   // Remove the task with the given ID and render the updated list
   tasks = tasks.filter(task => task.id != taskId)
-  renderTasks(tasks)
+  renderTasks()
 }
 
 export function filterTasks (priority) {
   // return filtered tasks
-  if (priority !== 'all') {
-    renderTasks(tasks.filter(task => task.priority === priority))
-  } else renderTasks(tasks)
+  return priority === 'all' ? tasks : tasks.filter(task => task.priority === priority)
 }
-
-const sortByPriority = tasks => tasks.sort((a,b) => PRIORITY_VALUE[b.priority] - PRIORITY_VALUE[a.priority])
-const sortByTime = tasks => tasks.sort((a,b) => b.createdAt - a.createdAt)
 
 export function sortTasks (tasks, sortBy) {
   // return sorted tasks
-  if (tasks.length < 2) return
+  if (sortBy === 'priority') return tasks.sort((a,b) => PRIORITY_ORDER_VALUE[b.priority] - PRIORITY_ORDER_VALUE[a.priority])
+  else if (sortBy === 'time') return tasks.sort((a,b) => b.createdAt - a.createdAt)
+  return tasks
+}
 
-  if(sortBy === 'priority') renderTasks(sortByPriority(tasks))
-  else renderTasks(sortByTime(tasks))
+export function selectedOptions () {
+  const filterSelect = document.getElementById('filter-select')
+  const sortSelect = document.getElementById('sort-select')
+
+  return {
+    filterOption: filterSelect.value,
+    sortOption: sortSelect.value
+  }
 }
 
 // Expects a task object
@@ -63,16 +58,22 @@ export function createTaskElement (task) {
   return li
 }
 
-export function renderTasks (renderTasksList) {
+export function renderTasks () {
   const taskList = document.getElementById('task-list')
-  const filterSelect = document.getElementById('filter-select')
-  const sortSelect = document.getElementById('sort-select')
+  const { filterOption, sortOption } = selectedOptions()
 
-  let documentFragment = document.createDocumentFragment()
-  renderTasksList.forEach(task => documentFragment.appendChild(createTaskElement(task)))
-  taskList.replaceChildren(documentFragment)
+  let renderList = filterTasks(filterOption)
+  renderList = sortTasks(renderList, sortOption)
+  
+  taskList.innerHTML = ''
+
+  renderList.forEach(task => {
+    const taskElement = createTaskElement(task)
+    taskList.appendChild(taskElement)
+    const deleteElement = taskElement.querySelector('.delete-btn')
+    deleteElement.addEventListener('click', event => deleteTask(event.target.dataset.id))
+  })
 }
-
 
 export function main () {
   const addTaskBtn = document.getElementById('add-task-btn')
@@ -80,35 +81,15 @@ export function main () {
   const prioritySelect = document.getElementById('priority-select')
   const filterSelect = document.getElementById('filter-select')
   const sortSelect = document.getElementById('sort-select')
-  
   // Add event listeners and handle task addition, filtering, and sorting here
-  const handleClickAddTask = event => {
-    event.preventDefault()
-    const task = taskInput.value.trim()
-    if (task) {
-      addTask(task, prioritySelect.value)
-      renderTasks([...tasks])
-      clearInput()
-      const deleteBtns = document.querySelectorAll('.delete-btn')
-      for(let deleteBtn of deleteBtns) deleteBtn.addEventListener('click', handleDeleteBtnClick)
-    }
-  }
 
-  const handleFilterChange = event => {
-    event.preventDefault()
-    filterTasks(event.target.value)
-  }
+  addTaskBtn.addEventListener('click', () => {
+    let task = taskInput.value.trim()
+    if (!task) return
+    addTask(task, prioritySelect.value)
+    taskInput.value = ""
+  })
 
-  const handleSortChange = event => {
-    event.preventDefault()
-    sortTasks([...tasks], sortSelect.value)
-  }
-  
-  const handleDeleteBtnClick = event => {
-    deleteTask(event.target.dataset.id)
-  }
-
-  addTaskBtn.addEventListener('click', handleClickAddTask)
-  filterSelect.addEventListener('change', handleFilterChange)
-  sortSelect.addEventListener('change', handleSortChange)
+  filterSelect.addEventListener('change', renderTasks)
+  sortSelect.addEventListener('change', renderTasks)
 }
